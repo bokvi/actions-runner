@@ -12,7 +12,7 @@ updates:
     schedule:
       interval: weekly
     commit-message:
-      prefix: fix
+      prefix: chore
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]

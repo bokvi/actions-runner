@@ -26,7 +26,9 @@ This image is the official runner image plus:
 Everything else is unchanged, except where the tool cache lives. Upstream it's `_work/_tool`; here `RUNNER_TOOL_CACHE` moves it to `/opt/hostedtoolcache`. That matters in two cases:
 
 - A volume you mount at `_work/_tool` to keep tools between runs is no longer used. Mount it at `/opt/hostedtoolcache` instead, or set `RUNNER_TOOL_CACHE` back. A volume there hides the cached Node unless it starts out with the image's content.
-- In jobs that run in a `container:`, the runner mounts the tool cache into the container as `/__t`. If the Docker daemon is a separate Docker-in-Docker container that shares only `_work` with the runner, `/__t` is empty there, so setup-node inside such a container downloads Node as before. The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
+- In jobs that run in a `container:`, the runner mounts the tool cache into the container as `/__t`. If the Docker daemon is a separate Docker-in-Docker container that shares only `_work` with the runner, `/__t` is empty there, so setup-node inside such a container downloads Node as before.
+
+The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
 
 ## Usage
 
@@ -75,7 +77,7 @@ Anywhere you would use `ghcr.io/actions/actions-runner`, swap in `ghcr.io/bokvi/
 
 ```sh
 make build        # build for the host architecture
-make test         # build, then check libatomic1 is installed and the user is `runner`
+make test         # build, then check libatomic1, the cached Node.js 24 and npm, and the user `runner`
 make shell        # build, then open a shell in the image
 make build-multi  # build linux/amd64 + linux/arm64 with buildx
 make push         # build both platforms and push (needs `docker login ghcr.io`)
