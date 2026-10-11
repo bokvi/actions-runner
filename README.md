@@ -21,9 +21,12 @@ This image is the official runner image plus:
 | `libatomic1` | Required by Node.js ≥ 25 |
 | `build-essential` | gcc/g++/make for native modules (`node-gyp`, etc.) |
 | `git`, `curl`, `jq`, `ca-certificates` | Common tooling (already in the base image today; listed so they stay there) |
-| Node.js 24 (`NODE_VERSION` in the [`Dockerfile`](Dockerfile)) | In the tool cache at `/opt/hostedtoolcache`, where `RUNNER_TOOL_CACHE` points, so `actions/setup-node` with `node-version: 24` doesn't download it. It isn't on `PATH`; jobs still pick their Node with setup-node |
+| Node.js 24 (the `node` image in the [`Dockerfile`](Dockerfile)) | In the tool cache at `/opt/hostedtoolcache`, where `RUNNER_TOOL_CACHE` points, so `actions/setup-node` with `node-version: 24` doesn't download it. It isn't on `PATH`; jobs still pick their Node with setup-node |
 
-Everything else is unchanged. The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
+Everything else is unchanged, except where the tool cache lives. Upstream it's `_work/_tool`; here `RUNNER_TOOL_CACHE` moves it to `/opt/hostedtoolcache`. That matters in two cases:
+
+- A volume you mount at `_work/_tool` to keep tools between runs is no longer used. Mount it at `/opt/hostedtoolcache` instead, or set `RUNNER_TOOL_CACHE` back. A volume there hides the cached Node unless it starts out with the image's content.
+- In jobs that run in a `container:`, the runner mounts the tool cache into the container as `/__t`. If the Docker daemon is a separate Docker-in-Docker container that shares only `_work` with the runner, `/__t` is empty there, so setup-node inside such a container downloads Node as before. The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
 
 ## Usage
 
@@ -80,7 +83,7 @@ make push         # build both platforms and push (needs `docker login ghcr.io`)
 
 Override `IMAGE`, `TAG` or `PLATFORMS` as needed, for example `make build TAG=dev`.
 
-To update the cached Node.js, set `NODE_VERSION` in the `Dockerfile` to the latest 24.x from [nodejs.org/dist/index.json](https://nodejs.org/dist/index.json). The build checks the download against Node's `SHASUMS256.txt`.
+The cached Node.js comes from the official `node` image, pinned by tag and digest in the `Dockerfile`. Dependabot proposes new 24.x releases weekly; a move to another major is a manual change, together with the README.
 
 ## Publishing
 

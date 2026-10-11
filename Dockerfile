@@ -2,6 +2,19 @@
 # Adds libatomic1, which Node.js >= 25 needs at runtime, plus a few common build tools,
 # and Node.js 24 in the runner's tool cache.
 ARG BASE_IMAGE=ghcr.io/actions/actions-runner:latest
+
+# Node.js for the tool cache, taken from the official image (Dependabot bumps it within 24.x).
+# Lay it out as actions/setup-node's tool-cache lookup expects: <cache>/node/<version>/<arch>/
+# and an empty <arch>.complete marker next to it, where <arch> is Node's own (x64, arm64).
+FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node
+RUN dir="/toolcache/node/$(node -p process.versions.node)" \
+ && arch="$(node -p process.arch)" \
+ && mkdir -p "${dir}/${arch}" \
+ && cp -a /usr/local/bin /usr/local/include /usr/local/lib /usr/local/share "${dir}/${arch}/" \
+ && rm -f "${dir}/${arch}/bin/docker-entrypoint.sh" "${dir}/${arch}/bin/nodejs" \
+      "${dir}/${arch}/bin/yarn" "${dir}/${arch}/bin/yarnpkg" \
+ && touch "${dir}/${arch}.complete"
+
 FROM ${BASE_IMAGE}
 
 USER root
@@ -17,29 +30,9 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Node.js in the tool cache, so actions/setup-node finds it ("Found in cache") instead of
-# downloading it in every job. setup-node's tool-cache lookup needs
-# <cache>/node/<version>/<arch>/ and an empty <arch>.complete marker next to it.
-# To bump: set NODE_VERSION to the latest 24.x from https://nodejs.org/dist/index.json.
-ARG NODE_VERSION=24.21.0
-ARG TARGETARCH
+# downloading it in every job.
 ENV RUNNER_TOOL_CACHE=/opt/hostedtoolcache
-RUN case "${TARGETARCH}" in \
-      amd64) arch=x64 ;; \
-      arm64) arch=arm64 ;; \
-      *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac \
- && tarball="node-v${NODE_VERSION}-linux-${arch}.tar.gz" \
- && dir="${RUNNER_TOOL_CACHE}/node/${NODE_VERSION}" \
- && cd /tmp \
- && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${tarball}" \
- && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
-      | grep " ${tarball}\$" | sha256sum -c - \
- && mkdir -p "${dir}/${arch}" \
- && tar -xzf "${tarball}" -C "${dir}/${arch}" --strip-components=1 --no-same-owner \
- && rm "${tarball}" \
- && touch "${dir}/${arch}.complete" \
- && chown -R runner:runner "${RUNNER_TOOL_CACHE}" \
- && "${dir}/${arch}/bin/node" --version
+COPY --from=node --chown=runner:runner /toolcache/ ${RUNNER_TOOL_CACHE}/
 
 USER runner
 

@@ -20,8 +20,11 @@ push:
 shell: build
 	docker run --rm -it $(IMAGE):$(TAG) bash
 
-## Check that libatomic1 is present, Node.js 24 is in the tool cache and the image still runs as `runner`
+## Check that libatomic1 is present, Node.js 24 is in the tool cache under setup-node's arch name
+## and owned by `runner`, and the image still runs as `runner`
 test: build
 	docker run --rm $(IMAGE):$(TAG) bash -c 'set -e; dpkg -s libatomic1 >/dev/null; test "$$(whoami)" = runner; \
-	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/*.complete; do test -f "$$m"; test -O "$$m"; "$${m%.complete}/bin/node" --version; done; \
+	  case "$$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; esac; test -O "$$RUNNER_TOOL_CACHE"; \
+	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/"$$arch".complete; do test -f "$$m"; test -O "$$m"; \
+	    PATH="$${m%.complete}/bin:$$PATH"; node --version; npm --version; done; \
 	  echo OK'
