@@ -25,7 +25,7 @@ shell: build
 test: build
 	docker run --rm $(IMAGE):$(TAG) bash -c 'set -e; dpkg -s libatomic1 >/dev/null; test "$$(whoami)" = runner; \
 	  case "$$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "unsupported arch: $$(uname -m)" >&2; exit 1 ;; esac; \
-	  test -z "$$(find "$$RUNNER_TOOL_CACHE" ! -user runner)"; \
+	  test -d "$$RUNNER_TOOL_CACHE"; not_runner=$$(find "$$RUNNER_TOOL_CACHE" ! -user runner); test -z "$$not_runner"; \
 	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/"$$arch".complete; do test -f "$$m"; \
 	    "$${m%.complete}/bin/node" --version | grep "^v24\."; PATH="$${m%.complete}/bin:$$PATH" npm --version; done; \
 	  echo OK'
