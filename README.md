@@ -2,7 +2,7 @@
 
 [![Build and publish](https://github.com/bokvi/actions-runner/actions/workflows/publish.yml/badge.svg)](https://github.com/bokvi/actions-runner/actions/workflows/publish.yml)
 
-A drop-in replacement for the official [`ghcr.io/actions/actions-runner`](https://github.com/actions/runner/pkgs/container/actions-runner) image with **`libatomic1`** pre-installed.
+A drop-in replacement for the official [`ghcr.io/actions/actions-runner`](https://github.com/actions/runner/pkgs/container/actions-runner) image with **`libatomic1`** pre-installed and **Node.js 24** in the tool cache.
 
 ## Why
 
@@ -12,6 +12,8 @@ Node.js 25+ links against `libatomic.so.1`, which the official runner image does
 node: error while loading shared libraries: libatomic.so.1: cannot open shared object file: No such file or directory
 ```
 
+On ephemeral runners every job also starts with an empty tool cache, so `actions/setup-node` downloads Node in each job. This image ships Node.js 24 in the tool cache, so setup-node logs `Found in cache` instead.
+
 This image is the official runner image plus:
 
 | Package | Why |
@@ -19,8 +21,14 @@ This image is the official runner image plus:
 | `libatomic1` | Required by Node.js ≥ 25 |
 | `build-essential` | gcc/g++/make for native modules (`node-gyp`, etc.) |
 | `git`, `curl`, `jq`, `ca-certificates` | Common tooling (already in the base image today; listed so they stay there) |
+| Node.js 24 (the `node` image in the [`Dockerfile`](Dockerfile)) | In the tool cache at `/opt/hostedtoolcache`, where `RUNNER_TOOL_CACHE` points, so `actions/setup-node` with `node-version: 24` doesn't download it. It isn't on `PATH`; jobs still pick their Node with setup-node |
 
-Everything else is unchanged. The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
+Everything else is unchanged, except where the tool cache lives. Upstream it's `_work/_tool`; here `RUNNER_TOOL_CACHE` moves it to `/opt/hostedtoolcache`. That matters in two cases:
+
+- A volume you mount at `_work/_tool` to keep tools between runs is no longer used. Mount it at `/opt/hostedtoolcache` instead, or set `RUNNER_TOOL_CACHE` back. A volume there hides the cached Node unless it starts out with the image's content.
+- In jobs that run in a `container:`, the runner mounts the tool cache into the container as `/__t`. Where the job container doesn't see the runner's filesystem (a separate Docker-in-Docker daemon that shares only `_work` with the runner, or ARC's Kubernetes container mode), `/__t` doesn't have the cached Node. setup-node inside such a container downloads Node instead, and fails if the container's user can't write to `/__t`, which the daemon may create as root.
+
+The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
 
 ## Usage
 
@@ -69,13 +77,15 @@ Anywhere you would use `ghcr.io/actions/actions-runner`, swap in `ghcr.io/bokvi/
 
 ```sh
 make build        # build for the host architecture
-make test         # build, then check libatomic1 is installed and the user is `runner`
+make test         # build, then check libatomic1, the cached Node.js 24 and npm, and the user `runner`
 make shell        # build, then open a shell in the image
 make build-multi  # build linux/amd64 + linux/arm64 with buildx
 make push         # build both platforms and push (needs `docker login ghcr.io`)
 ```
 
 Override `IMAGE`, `TAG` or `PLATFORMS` as needed, for example `make build TAG=dev`.
+
+The cached Node.js comes from the official `node` image, pinned by tag and digest in the `Dockerfile`. Dependabot proposes new 24.x releases weekly; a move to another major is a manual change, together with the README.
 
 ## Publishing
 
