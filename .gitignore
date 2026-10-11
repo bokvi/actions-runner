@@ -1,0 +1,17 @@
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Exported images and build output
+*.tar
+*.tar.gz
+build/
+dist/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
