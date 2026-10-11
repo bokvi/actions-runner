@@ -3,3 +3,5 @@
 *.md
 Makefile
 LICENSE
+
+commitlint.config.mjs
