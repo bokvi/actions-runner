@@ -24,7 +24,8 @@ shell: build
 ## and owned by `runner`, and the image still runs as `runner`
 test: build
 	docker run --rm $(IMAGE):$(TAG) bash -c 'set -e; dpkg -s libatomic1 >/dev/null; test "$$(whoami)" = runner; \
-	  case "$$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "unsupported arch: $$(uname -m)" >&2; exit 1 ;; esac; test -O "$$RUNNER_TOOL_CACHE"; \
-	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/"$$arch".complete; do test -f "$$m"; test -O "$$m"; \
-	    PATH="$${m%.complete}/bin:$$PATH"; node --version; npm --version; done; \
+	  case "$$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "unsupported arch: $$(uname -m)" >&2; exit 1 ;; esac; \
+	  test -z "$$(find "$$RUNNER_TOOL_CACHE" ! -user runner)"; \
+	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/"$$arch".complete; do test -f "$$m"; \
+	    "$${m%.complete}/bin/node" --version | grep "^v24\."; PATH="$${m%.complete}/bin:$$PATH" npm --version; done; \
 	  echo OK'
