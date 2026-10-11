@@ -10,7 +10,7 @@ FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc
 RUN dir="/toolcache/node/$(node -p process.versions.node)" \
  && arch="$(node -p process.arch)" \
  && mkdir -p "${dir}/${arch}" \
- && cp -a /usr/local/bin /usr/local/include /usr/local/lib /usr/local/share "${dir}/${arch}/" \
+ && cp -a /usr/local/LICENSE /usr/local/bin /usr/local/include /usr/local/lib /usr/local/share "${dir}/${arch}/" \
  && rm -f "${dir}/${arch}/bin/docker-entrypoint.sh" "${dir}/${arch}/bin/nodejs" \
       "${dir}/${arch}/bin/yarn" "${dir}/${arch}/bin/yarnpkg" \
  && touch "${dir}/${arch}.complete"
