@@ -1,0 +1,7 @@
+# Exceptions to the Git conventions in Dotykacka/docs-git, checked by its tools/repo-config.sh.
+exceptions:
+  - rule: repo-name
+    reason: Lives in the bokvi organization, not Dotykacka; the name mirrors the upstream ghcr.io/actions/actions-runner image it extends.
+  - rule: review-approvals
+    value: 0
+    reason: Single maintainer, there is no second reviewer. Pull requests are still required.
