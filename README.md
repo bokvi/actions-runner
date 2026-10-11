@@ -2,7 +2,7 @@
 
 [![Build and publish](https://github.com/bokvi/actions-runner/actions/workflows/publish.yml/badge.svg)](https://github.com/bokvi/actions-runner/actions/workflows/publish.yml)
 
-A drop-in replacement for the official [`ghcr.io/actions/actions-runner`](https://github.com/actions/runner/pkgs/container/actions-runner) image with **`libatomic1`** pre-installed.
+A drop-in replacement for the official [`ghcr.io/actions/actions-runner`](https://github.com/actions/runner/pkgs/container/actions-runner) image with **`libatomic1`** pre-installed and **Node.js 24** in the tool cache.
 
 ## Why
 
@@ -12,6 +12,8 @@ Node.js 25+ links against `libatomic.so.1`, which the official runner image does
 node: error while loading shared libraries: libatomic.so.1: cannot open shared object file: No such file or directory
 ```
 
+On ephemeral runners every job also starts with an empty tool cache, so `actions/setup-node` downloads Node in each job. This image ships Node.js 24 in the tool cache, so setup-node logs `Found in cache` instead.
+
 This image is the official runner image plus:
 
 | Package | Why |
@@ -19,6 +21,7 @@ This image is the official runner image plus:
 | `libatomic1` | Required by Node.js ≥ 25 |
 | `build-essential` | gcc/g++/make for native modules (`node-gyp`, etc.) |
 | `git`, `curl`, `jq`, `ca-certificates` | Common tooling (already in the base image today; listed so they stay there) |
+| Node.js 24 (`NODE_VERSION` in the [`Dockerfile`](Dockerfile)) | In the tool cache at `/opt/hostedtoolcache`, where `RUNNER_TOOL_CACHE` points, so `actions/setup-node` with `node-version: 24` doesn't download it. It isn't on `PATH`; jobs still pick their Node with setup-node |
 
 Everything else is unchanged. The image runs as the `runner` user, and its entrypoint, `CMD` and working directory (`/home/runner`) are inherited from upstream, so it works anywhere the official image does.
 
@@ -76,6 +79,8 @@ make push         # build both platforms and push (needs `docker login ghcr.io`)
 ```
 
 Override `IMAGE`, `TAG` or `PLATFORMS` as needed, for example `make build TAG=dev`.
+
+To update the cached Node.js, set `NODE_VERSION` in the `Dockerfile` to the latest 24.x from [nodejs.org/dist/index.json](https://nodejs.org/dist/index.json). The build checks the download against Node's `SHASUMS256.txt`.
 
 ## Publishing
 
