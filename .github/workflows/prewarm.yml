@@ -1,0 +1,84 @@
+name: Prewarm
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prewarm-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DIND_IMAGE: ghcr.io/${{ github.repository_owner }}/actions-runner:dind-${{ github.sha }}-${{ matrix.arch }}
+      NPM_PROXY_BIND: 127.0.0.1
+      NPM_PROXY_PORT: 14873
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the runner image
+        run: make test
+      - name: Build the trusted seed
+        run: make build-dind
+      - name: Verify fresh daemons
+        run: make test-dind
+      - name: Start the npm proxy
+        run: docker compose -p prewarm-test -f prewarm/npm/compose.yml up -d --wait
+      - name: Verify npm caching and write rejection
+        run: python3 prewarm/npm/test.py --network prewarm-test_default
+      - name: Remove test proxy and its cache
+        if: always()
+        run: docker compose -p prewarm-test -f prewarm/npm/compose.yml down -v
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the validated native image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: docker push "$DIND_IMAGE"
+
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the multi-architecture seed
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/actions-runner
+          COMMIT: ${{ github.sha }}
+        run: |
+          docker buildx imagetools create \
+            -t "$IMAGE:dind" -t "$IMAGE:dind-$COMMIT" \
+            "$IMAGE:dind-$COMMIT-amd64" "$IMAGE:dind-$COMMIT-arm64"

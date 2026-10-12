@@ -1,8 +1,9 @@
 IMAGE ?= ghcr.io/bokvi/actions-runner
 TAG ?= local
 PLATFORMS ?= linux/amd64,linux/arm64
+DIND_IMAGE ?= $(IMAGE):dind-local
 
-.PHONY: build build-multi push shell test
+.PHONY: build build-multi push shell test build-dind test-dind
 
 ## Build for the host architecture and load into the local Docker daemon
 build:
@@ -29,3 +30,11 @@ test: build
 	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/"$$arch".complete; do test -f "$$m"; \
 	    "$${m%.complete}/bin/node" --version | grep "^v24\."; PATH="$${m%.complete}/bin:$$PATH" npm --version; done; \
 	  echo OK'
+
+## Build trusted image seeds on the native architecture (requires privileged Docker)
+build-dind:
+	python3 prewarm/build.py --tag $(DIND_IMAGE)
+
+## Verify real daemons, exact digest hits, isolation, restart and cache misses
+test-dind:
+	python3 prewarm/test.py --image $(DIND_IMAGE)

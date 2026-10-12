@@ -1,0 +1,29 @@
+services:
+  registry:
+    image: nginx:stable-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+    restart: unless-stopped
+    ports:
+      # Bind to the build host's Docker bridge, never its public interfaces.
+      - "${NPM_PROXY_BIND:-172.17.0.1}:${NPM_PROXY_PORT:-4873}:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - cache:/var/cache/nginx
+    read_only: true
+    tmpfs:
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/health]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  cache:

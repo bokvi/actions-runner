@@ -15,7 +15,7 @@ RUN dir="/toolcache/node/$(node -p process.versions.node)" \
       "${dir}/${arch}/bin/yarn" "${dir}/${arch}/bin/yarnpkg" \
  && touch "${dir}/${arch}.complete"
 
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS base
 
 USER root
 
@@ -37,3 +37,11 @@ COPY --from=node --chown=runner:runner /toolcache/ ${RUNNER_TOOL_CACHE}/
 USER runner
 
 # No ENTRYPOINT/CMD here on purpose: the upstream image's defaults are inherited unchanged.
+
+# Opt-in fleet variant. A project .npmrc or explicit npm configuration can override
+# this user-level default; the ordinary runner image remains registry-independent.
+FROM base AS ci-bokvi
+ARG NPM_REGISTRY=http://172.17.0.1:4873
+RUN printf 'registry=%s\n' "$NPM_REGISTRY" > /home/runner/.npmrc
+
+FROM base AS runner
