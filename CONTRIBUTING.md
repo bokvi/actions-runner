@@ -16,6 +16,10 @@ make test         # build for the host architecture, check libatomic1, the cache
 make build-multi  # build linux/amd64 and linux/arm64
 ```
 
+For stack prewarming, also run `make build-dind`, `make test-dind`, and the npm proxy verification
+in [prewarm/README.md](prewarm/README.md). The `Prewarm` workflow checks both native architectures
+before publishing the DinD seed from `main`.
+
 ## Checks
 
 Pull requests must pass the **Lint** workflow, which runs [commitlint](https://commitlint.js.org/) ([`commitlint.config.mjs`](commitlint.config.mjs)) on the PR title and every commit. **Build and publish** runs on `main` and on `v*` tags.

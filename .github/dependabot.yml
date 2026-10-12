@@ -16,3 +16,11 @@ updates:
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]
+  - package-ecosystem: docker
+    directories:
+      - /prewarm
+      - /prewarm/npm
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore

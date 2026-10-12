@@ -75,6 +75,10 @@ Anywhere you would use `ghcr.io/actions/actions-runner`, swap in `ghcr.io/bokvi/
 
 ## Building locally
 
+For the optional seeded Docker sidecar and npm proxy used by ephemeral Coolify stacks, see
+[the prewarming runbook](prewarm/README.md). The ordinary `:latest` runner stays independent
+of that infrastructure; `:ci-bokvi` and `:dind` are opt-in variants.
+
 ```sh
 make build        # build for the host architecture
 make test         # build, then check libatomic1, the cached Node.js 24 and npm, and the user `runner`
