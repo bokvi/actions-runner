@@ -120,9 +120,19 @@ docker compose -p prewarm-test -f prewarm/npm/compose.yml down -v
 3. Pull the pinned seed and runner images onto each build host before selecting them. Coolify
    checks/pulls the runner image on each start; its large layers must already be local.
 4. Persist `GITHUB_RUNNER_DIND_IMAGE=ghcr.io/bokvi/actions-runner@sha256:<seed-digest>` in the
-   Coolify instance's `/data/coolify/source/.env`. Rebuild its Laravel configuration cache and
-   gracefully restart queue workers (`php artisan config:cache`, `php artisan queue:restart`
-   inside the Coolify container). Verify `config('constants.github_runner.dind_image')`.
+   Coolify instance's `/data/coolify/source/.env`. Coolify also loads this file through Compose
+   `env_file`: an existing container environment value overrides later `.env` edits. Explicitly
+   supply the desired value when rebuilding Laravel's cache, then gracefully restart workers:
+
+   ```sh
+   RUNNER_DIND_IMAGE='ghcr.io/bokvi/actions-runner@sha256:<seed-digest>'
+   docker exec -e GITHUB_RUNNER_DIND_IMAGE="$RUNNER_DIND_IMAGE" coolify php artisan config:cache
+   docker exec coolify php artisan queue:restart
+   docker exec coolify php artisan tinker --execute="echo config('constants.github_runner.dind_image');"
+   ```
+
+   Require the last command to print the desired pin. The persisted `.env` value also ensures
+   later Coolify container recreations use the same image.
 5. In the server's GitHub Runners settings, select the published `ci-bokvi` image by digest.
    Preserve labels, concurrency, limits and Docker mode. Existing jobs finish on their current
    stacks; the settings apply to future stacks.
@@ -131,7 +141,9 @@ docker compose -p prewarm-test -f prewarm/npm/compose.yml down -v
    on the same host. Separate preparation gains from unrelated test/queue time.
 
 Rollback: restore the previous runner and sidecar image settings, refresh Coolify's configuration
-and workers, and let existing jobs finish. Remove the proxy only after no runner uses it.
+and workers with the same explicit environment override above (set `RUNNER_DIND_IMAGE` to the
+previous sidecar value), verify the effective value, and let existing jobs finish. Remove the
+proxy only after no runner uses it.
 Retain old digests until validation completes. Never migrate a live job's Docker root or reuse
 a seeded volume with a different daemon image.
 
