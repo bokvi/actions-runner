@@ -2,9 +2,11 @@
 """Exercise exact pins, private state, restarts and cache misses in real DinD."""
 import argparse
 import concurrent.futures
+import io
 import json
 import pathlib
 import subprocess
+import tarfile
 import time
 import uuid
 
@@ -38,6 +40,10 @@ def main():
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             for name, duration in zip(names, executor.map(start, names)):
                 report["startup_seconds"][name[-1]] = round(duration, 3)
+        # Must work before any create marks a pulled top layer committed.
+        for image in images:
+            inner(names[0], "image", "save", image, stdout=subprocess.DEVNULL)
+        report["export_before_create"] = "passed"
         for name in names:
             driver = inner(name, "info", "--format", "{{.Driver}}",
                            capture_output=True, text=True).stdout.strip()
@@ -62,6 +68,22 @@ test -n "$browser"
                                     image, "sh", "-c", script, capture_output=True, text=True)
                     assert "seed-ok" in browser.stdout, browser.stderr
                     report["chromium"] = "headless page rendered in both stacks"
+        # Consumers also build new layers from seeded images; these writes must
+        # stay private and support normal image export.
+        dockerfile = ("FROM " + images[-1] + "\nRUN echo build-ok >/seed-build-proof\n").encode()
+        context = io.BytesIO()
+        with tarfile.open(fileobj=context, mode="w") as archive:
+            info = tarfile.TarInfo("Dockerfile")
+            info.size = len(dockerfile)
+            archive.addfile(info, io.BytesIO(dockerfile))
+        run("docker", "exec", "-i", names[0], "docker", "build", "-t", "seed-build-proof", "-",
+            input=context.getvalue())
+        output = inner(names[0], "run", "--rm", "seed-build-proof", "cat", "/seed-build-proof",
+                       capture_output=True, text=True).stdout.strip()
+        assert output == "build-ok", output
+        inner(names[0], "image", "save", "seed-build-proof", stdout=subprocess.DEVNULL)
+        inner(names[0], "image", "rm", "seed-build-proof")
+        report["build_and_export"] = "passed"
         # The backing seed is read-only; each daemon still supports normal removal.
         result = subprocess.run(["docker", "exec", names[0], "touch", "/opt/docker-seed/poison"],
                                 capture_output=True)

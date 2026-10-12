@@ -51,6 +51,16 @@ make build-dind                  # native architecture; privileged Docker requir
 make test-dind                   # two stacks, exact pins, restart, isolation and miss
 ```
 
+To compare stock and seeded sidecars on the same host with production-like CPU limits:
+
+```sh
+python3 prewarm/benchmark.py --seed ghcr.io/bokvi/actions-runner@sha256:<seed-digest> --cpus 3
+```
+
+Both outer images must already be local. The benchmark uses only temporary containers and
+reports image pulls, first/second creates, and three pairs of concurrent starts. It excludes
+Coolify/GitHub registration and does not change the live pool.
+
 The `Prewarm` workflow runs natively on amd64 and arm64. Successful `main` runs publish
 `:dind-<full-commit>-amd64`, `:dind-<full-commit>-arm64`, and combined `:dind-<full-commit>` / `:dind`
 tags in `ghcr.io/bokvi/actions-runner`. Pin the combined image by digest for deployment.
