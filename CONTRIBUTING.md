@@ -12,7 +12,7 @@ This repository follows the Git conventions in [Dotykacka/docs-git](https://gith
 Requires Docker with Buildx.
 
 ```sh
-make test         # build for the host architecture, check libatomic1, the cached Node.js and the runner user
+make test         # build for the host architecture, check libatomic1, gh, the AWS CLI, the cached Node.js and the runner user
 make build-multi  # build linux/amd64 and linux/arm64
 ```
 

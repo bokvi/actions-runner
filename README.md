@@ -2,7 +2,7 @@
 
 [![Build and publish](https://github.com/bokvi/actions-runner/actions/workflows/publish.yml/badge.svg)](https://github.com/bokvi/actions-runner/actions/workflows/publish.yml)
 
-A drop-in replacement for the official [`ghcr.io/actions/actions-runner`](https://github.com/actions/runner/pkgs/container/actions-runner) image with **`libatomic1`** pre-installed and **Node.js 24** in the tool cache.
+A drop-in replacement for the official [`ghcr.io/actions/actions-runner`](https://github.com/actions/runner/pkgs/container/actions-runner) image with **`libatomic1`**, the **AWS CLI** and the **GitHub CLI** pre-installed and **Node.js 24** in the tool cache.
 
 ## Why
 
@@ -20,6 +20,8 @@ This image is the official runner image plus:
 | --- | --- |
 | `libatomic1` | Required by Node.js ≥ 25 |
 | `build-essential` | gcc/g++/make for native modules (`node-gyp`, etc.) |
+| AWS CLI v2 (the `amazon/aws-cli` image in the [`Dockerfile`](Dockerfile)) | `aws` for S3 and S3-compatible storage such as Cloudflare R2, including conditional writes (`s3api put-object --if-match` / `--if-none-match`), which Ubuntu's `awscli` package lacks |
+| `gh` (GitHub's apt repository) | GitHub CLI, for example `gh release create` |
 | `git`, `curl`, `jq`, `ca-certificates` | Common tooling (already in the base image today; listed so they stay there) |
 | Node.js 24 (the `node` image in the [`Dockerfile`](Dockerfile)) | In the tool cache at `/opt/hostedtoolcache`, where `RUNNER_TOOL_CACHE` points, so `actions/setup-node` with `node-version: 24` doesn't download it. It isn't on `PATH`; jobs still pick their Node with setup-node |
 
@@ -81,7 +83,7 @@ of that infrastructure; `:ci-bokvi` and `:dind` are opt-in variants.
 
 ```sh
 make build        # build for the host architecture
-make test         # build, then check libatomic1, the cached Node.js 24 and npm, and the user `runner`
+make test         # build, then check libatomic1, gh, the AWS CLI, the cached Node.js 24 and npm, and the user `runner`
 make shell        # build, then open a shell in the image
 make build-multi  # build linux/amd64 + linux/arm64 with buildx
 make push         # build both platforms and push (needs `docker login ghcr.io`)
@@ -89,7 +91,7 @@ make push         # build both platforms and push (needs `docker login ghcr.io`)
 
 Override `IMAGE`, `TAG` or `PLATFORMS` as needed, for example `make build TAG=dev`.
 
-The cached Node.js comes from the official `node` image, pinned by tag and digest in the `Dockerfile`. Dependabot proposes new 24.x releases weekly; a move to another major is a manual change, together with the README.
+The cached Node.js comes from the official `node` image, pinned by tag and digest in the `Dockerfile`. Dependabot proposes new 24.x releases weekly; a move to another major is a manual change, together with the README. The AWS CLI is pinned the same way, from the official `amazon/aws-cli` image, and Dependabot bumps it too. `gh` is installed from GitHub's apt repository at build time, so each build gets its current release.
 
 ## Publishing
 

@@ -6,7 +6,8 @@ updates:
       interval: weekly
     commit-message:
       prefix: ci
-  # The Node.js image the tool cache is copied from. Stay on Node 24, the major in the README.
+  # The images the Dockerfile copies from: Node.js for the tool cache (stay on Node 24, the major
+  # in the README) and the AWS CLI.
   - package-ecosystem: docker
     directory: /
     schedule:

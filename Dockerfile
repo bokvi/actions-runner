@@ -1,6 +1,6 @@
 # Custom GitHub Actions runner image.
 # Adds libatomic1, which Node.js >= 25 needs at runtime, plus a few common build tools,
-# and Node.js 24 in the runner's tool cache.
+# the AWS CLI and the GitHub CLI, and Node.js 24 in the runner's tool cache.
 ARG BASE_IMAGE=ghcr.io/actions/actions-runner:latest
 
 # Node.js for the tool cache, taken from the official image (Dependabot bumps it within 24.x).
@@ -15,19 +15,38 @@ RUN dir="/toolcache/node/$(node -p process.versions.node)" \
       "${dir}/${arch}/bin/yarn" "${dir}/${arch}/bin/yarnpkg" \
  && touch "${dir}/${arch}.complete"
 
+# AWS CLI v2, taken from the official image (Dependabot bumps it). Ubuntu's awscli package is
+# older and lacks conditional writes (s3api put-object --if-match / --if-none-match).
+FROM amazon/aws-cli:2.38.0@sha256:ed3233c28ad56d6a66e9e7623a495ab2d7eb08d425f8eea0fdbdfacb12de2ba8 AS aws-cli
+
 FROM ${BASE_IMAGE} AS base
 
 USER root
 
-RUN apt-get update \
+# gh comes from GitHub's apt repository, signed with the keyring GitHub publishes there.
+RUN install -d -m 755 /etc/apt/keyrings \
+ && curl -fsSL -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+      https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+ && chmod 644 /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list \
+ && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       libatomic1 \
       build-essential \
       ca-certificates \
       curl \
+      gh \
       git \
       jq \
  && rm -rf /var/lib/apt/lists/*
+
+# The AWS CLI keeps the official image's layout: the versioned install under /usr/local/aws-cli
+# and symlinks in /usr/local/bin. They are recreated rather than copied, because COPY follows
+# them and the binary only finds its bundled libraries from its own directory.
+COPY --from=aws-cli /usr/local/aws-cli/ /usr/local/aws-cli/
+RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/aws-cli/v2/current/bin/aws_completer \
+      /usr/local/bin/
 
 # Node.js in the tool cache, so actions/setup-node finds it ("Found in cache") instead of
 # downloading it in every job.
