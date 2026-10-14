@@ -8,7 +8,7 @@
       "@semantic-release/exec",
       {
         "verifyConditionsCmd": "docker buildx imagetools inspect \"$IMAGE@$DIGEST\" > /dev/null",
-        "publishCmd": "docker buildx imagetools create -t \"$IMAGE:${nextRelease.version}\" -t \"$IMAGE:sha-$(git rev-parse --short=7 HEAD)\" \"$IMAGE@$DIGEST\""
+        "prepareCmd": "docker buildx imagetools create -t \"$IMAGE:${nextRelease.version}\" -t \"$IMAGE:sha-$(printf %.7s \"$GITHUB_SHA\")\" \"$IMAGE@$DIGEST\""
       }
     ],
     [

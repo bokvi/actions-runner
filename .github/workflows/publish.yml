@@ -72,10 +72,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
 
-  # Derives the next version from the Conventional Commits since the last tag and creates the
-  # v<version> tag. .releaserc.json then tags the image the build job pushed as :latest with the
-  # version, and only after that creates the GitHub release. A tag pushed with GITHUB_TOKEN starts
-  # no workflow, so the image is tagged here, not by a tag run.
+  # Derives the next version from the Conventional Commits since the last tag. .releaserc.json
+  # tags the image the build job pushed as :latest with the version, and only then creates the
+  # v<version> tag and the GitHub release. A tag pushed with GITHUB_TOKEN starts no workflow, so
+  # the image is tagged here, not by a tag run.
   release:
     needs: build
     if: github.ref == 'refs/heads/main'
