@@ -41,8 +41,10 @@ Available tags:
 | Tag | Published when |
 | --- | --- |
 | `latest` | Every push to `main` |
-| `1.2.3` | A `v1.2.3` git tag is pushed |
-| `sha-<short-sha>` | A `v*` git tag is pushed (the commit the tag points to) |
+| `1.2.3` | A push to `main` releases `v1.2.3` (see [Publishing](#publishing)) |
+| `sha-<short-sha>` | A push to `main` releases a version (the released commit) |
+
+[Releases](https://github.com/bokvi/actions-runner/releases) list what changed in each version.
 
 Platforms: `linux/amd64`, `linux/arm64`.
 
@@ -93,18 +95,20 @@ The cached Node.js comes from the official `node` image, pinned by tag and diges
 
 ## Publishing
 
-[`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds the multi-arch image with Docker Buildx and pushes it to GHCR using the built-in `GITHUB_TOKEN`. It runs on:
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds the multi-arch image with Docker Buildx and pushes it to GHCR using the built-in `GITHUB_TOKEN`. It runs on a push to `main` and on a manual run (`workflow_dispatch`) on `main`, and:
 
-- push to `main` → `:latest`
-- push of a `v*` tag → `:<version>` and `:sha-<short-sha>`
-- manual run (`workflow_dispatch`) → on `main`, the same as a push to `main`
+1. pushes the image as `:latest`;
+2. runs [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)), which derives the next version from the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) since the last release and creates the `v<version>` tag;
+3. if the commits release a version, tags the same image as `:<version>` and `:sha-<short-sha>`, then creates the GitHub release.
 
-To cut a release:
+| Commits since the last release | Release |
+| --- | --- |
+| A breaking change (`feat!:`, `fix!:` or a `BREAKING CHANGE:` footer) | major |
+| `feat` | minor |
+| `fix`, `perf`, `revert` | patch |
+| Only other types (`ci`, `chore`, `docs`, …) | none, only `:latest` is updated |
 
-```sh
-git tag v1.0.0
-git push origin v1.0.0
-```
+Pull requests are squash-merged, so the PR title decides the release. Dependabot's updates of the `Dockerfile` images use `fix`, so they release a patch version. Don't push `v*` tags by hand.
 
 ### Package visibility
 
