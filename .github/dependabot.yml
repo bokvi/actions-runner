@@ -6,7 +6,8 @@ updates:
       interval: weekly
     commit-message:
       prefix: ci
-  # The Node.js image the tool cache is copied from. Stay on Node 24, the major in the README.
+  # The images the Dockerfile copies from: Node.js for the tool cache (stay on Node 24, the major
+  # in the README) and the AWS CLI.
   - package-ecosystem: docker
     directory: /
     schedule:
@@ -15,6 +16,9 @@ updates:
       prefix: chore
     ignore:
       - dependency-name: node
+        update-types: [version-update:semver-major]
+      # A new AWS CLI major may change the /usr/local/aws-cli/v2 layout the Dockerfile links to.
+      - dependency-name: amazon/aws-cli
         update-types: [version-update:semver-major]
   - package-ecosystem: docker
     directories:

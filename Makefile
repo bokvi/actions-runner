@@ -22,9 +22,16 @@ shell: build
 	docker run --rm -it $(IMAGE):$(TAG) bash
 
 ## Check that libatomic1 is present, Node.js 24 is in the tool cache under setup-node's arch name
-## and owned by `runner`, and the image still runs as `runner`
+## and owned by `runner`, gh and the AWS CLI run (with put-object's conditional-write options),
+## and the image still runs as `runner`
 test: build
 	docker run --rm $(IMAGE):$(TAG) bash -c 'set -e; dpkg -s libatomic1 >/dev/null; test "$$(whoami)" = runner; \
+	  gh --version; aws --version; \
+	  out=$$(AWS_ACCESS_KEY_ID=x AWS_SECRET_ACCESS_KEY=x AWS_DEFAULT_REGION=auto AWS_MAX_ATTEMPTS=1 \
+	    aws s3api put-object --endpoint-url http://127.0.0.1:9 --bucket b --key k \
+	      --if-match x --if-none-match "*" 2>&1) && exit 1; \
+	  echo "$$out" | grep -q "Could not connect to the endpoint URL" || { echo "$$out" >&2; exit 1; }; \
+	  test ! -e /etc/apt/sources.list.d/github-cli.list; \
 	  case "$$(uname -m)" in x86_64) arch=x64 ;; aarch64) arch=arm64 ;; *) echo "unsupported arch: $$(uname -m)" >&2; exit 1 ;; esac; \
 	  test -d "$$RUNNER_TOOL_CACHE"; not_runner=$$(find "$$RUNNER_TOOL_CACHE" ! -user runner); test -z "$$not_runner"; \
 	  for m in "$$RUNNER_TOOL_CACHE"/node/24.*/"$$arch".complete; do test -f "$$m"; \
