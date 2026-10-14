@@ -17,6 +17,17 @@ updates:
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]
+  # semantic-release for the release job. The conventionalcommits preset stays on 9.x: 10.x needs
+  # conventional-changelog-writer 9, and semantic-release's notes generator still ships writer 8.
+  - package-ecosystem: npm
+    directory: /release
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    ignore:
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: [version-update:semver-major]
   - package-ecosystem: docker
     directories:
       - /prewarm

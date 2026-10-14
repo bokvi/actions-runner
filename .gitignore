@@ -16,3 +16,6 @@ dist/
 .vscode/
 *.swp
 __pycache__/
+
+# Release tooling
+node_modules/

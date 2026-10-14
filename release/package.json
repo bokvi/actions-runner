@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "description": "semantic-release and its plugins for the release job in .github/workflows/publish.yml",
+  "devDependencies": {
+    "@semantic-release/exec": "7.1.0",
+    "conventional-changelog-conventionalcommits": "9.3.1",
+    "semantic-release": "25.0.9"
+  }
+}

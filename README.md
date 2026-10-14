@@ -98,7 +98,7 @@ The cached Node.js comes from the official `node` image, pinned by tag and diges
 [`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds the multi-arch image with Docker Buildx and pushes it to GHCR using the built-in `GITHUB_TOKEN`. It runs on a push to `main` and on a manual run (`workflow_dispatch`) on `main`, and:
 
 1. pushes the image as `:latest`;
-2. runs [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)), which derives the next version from the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) since the last release;
+2. runs [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json), versions locked in [`release/`](release/package.json)), which derives the next version from the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) since the last release;
 3. if the commits release a version, tags the same image as `:<version>` and `:sha-<short-sha>`, then creates the `v<version>` tag and the GitHub release.
 
 | Commits since the last release | Release |
