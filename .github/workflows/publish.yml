@@ -3,7 +3,6 @@ name: Build and publish
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -13,10 +12,18 @@ permissions:
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/actions-runner
 
+# One run at a time, so :latest and the releases follow the order of the pushes. A newer push
+# replaces a waiting run; its release then includes the waiting run's commits.
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -36,13 +43,12 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=sha,enable=${{ startsWith(github.ref, 'refs/tags/') }}
           labels: |
             org.opencontainers.image.title=actions-runner
             org.opencontainers.image.description=GitHub Actions runner image with libatomic1 (Node.js 25+), Node.js 24 in the tool cache and common build tools
 
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -65,3 +71,49 @@ jobs:
             ${{ env.IMAGE }}:ci-bokvi-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
+
+  # Derives the next version from the Conventional Commits since the last tag. .releaserc.json
+  # tags the image the build job pushed as :latest with the version, and only then creates the
+  # v<version> tag and the GitHub release. A tag pushed with GITHUB_TOKEN starts no workflow, so
+  # the image is tagged here, not by a tag run.
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install semantic-release
+        run: >-
+          npm install --no-save --no-package-lock --ignore-scripts
+          semantic-release@25.0.9
+          @semantic-release/commit-analyzer@13.0.1
+          @semantic-release/release-notes-generator@14.1.1
+          @semantic-release/exec@7.1.0
+          @semantic-release/github@12.0.10
+          conventional-changelog-conventionalcommits@9.3.1
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: npx --no-install semantic-release
