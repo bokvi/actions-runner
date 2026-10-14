@@ -3,7 +3,6 @@ name: Build and publish
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -17,6 +16,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -36,13 +37,12 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=sha,enable=${{ startsWith(github.ref, 'refs/tags/') }}
           labels: |
             org.opencontainers.image.title=actions-runner
             org.opencontainers.image.description=GitHub Actions runner image with libatomic1 (Node.js 25+), Node.js 24 in the tool cache and common build tools
 
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -65,3 +65,65 @@ jobs:
             ${{ env.IMAGE }}:ci-bokvi-${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
+
+  # Derives the next version from the Conventional Commits since the last tag, creates the
+  # v<version> tag and GitHub release, and tags the image the build job pushed as :latest with it.
+  # A tag pushed with GITHUB_TOKEN starts no workflow, so the image is tagged here, not by a tag run.
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: release-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install semantic-release
+        run: >-
+          npm install --no-save --no-package-lock
+          semantic-release@25.0.9
+          @semantic-release/commit-analyzer@13.0.1
+          @semantic-release/release-notes-generator@14.1.1
+          @semantic-release/github@12.0.10
+          conventional-changelog-conventionalcommits@10.4.1
+
+      - name: Release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx --no-install semantic-release
+          version=$(git tag --points-at HEAD --list 'v*' | sed -n 's/^v//p' | sort -V | tail -n 1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.release.outputs.version != ''
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: steps.release.outputs.version != ''
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the image with the version
+        if: steps.release.outputs.version != ''
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          docker buildx imagetools create \
+            -t "$IMAGE:$VERSION" -t "$IMAGE:sha-${COMMIT::7}" \
+            "$IMAGE@$DIGEST"

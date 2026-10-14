@@ -22,7 +22,7 @@ before publishing the DinD seed from `main`.
 
 ## Checks
 
-Pull requests must pass the **Lint** workflow, which runs [commitlint](https://commitlint.js.org/) ([`commitlint.config.mjs`](commitlint.config.mjs)) on the PR title and every commit. **Build and publish** runs on `main` and on `v*` tags.
+Pull requests must pass the **Lint** workflow, which runs [commitlint](https://commitlint.js.org/) ([`commitlint.config.mjs`](commitlint.config.mjs)) on the PR title and every commit. **Build and publish** runs on `main`.
 
 ## Scopes
 
@@ -30,16 +30,11 @@ No scopes are defined. Use one only when it makes a change clearer, for example 
 
 ## Releases
 
-`main` publishes `ghcr.io/bokvi/actions-runner:latest`. To publish a version, tag the commit on `main` as `v<major>.<minor>.<patch>` and push the tag:
-
-```sh
-git tag v1.0.0
-git push origin v1.0.0
-```
+Every push to `main` publishes `ghcr.io/bokvi/actions-runner:latest`. Versions are released automatically: after the build, [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)) derives the next version from the commits since the last release, creates the `v<major>.<minor>.<patch>` tag and GitHub release, and the image is tagged `:<major>.<minor>.<patch>`. A breaking change releases a major version, `feat` a minor and `fix` or `perf` a patch; other types release nothing. The squash commit uses the PR title, so choose its type with the release in mind. Don't push `v*` tags by hand.
 
 ## Credentials
 
-The publish workflow pushes to GHCR with the job's short-lived `GITHUB_TOKEN` (`packages: write`). No long-lived secrets are stored, and OIDC is not needed: GHCR accepts `GITHUB_TOKEN` directly.
+The publish workflow pushes to GHCR with the job's short-lived `GITHUB_TOKEN` (`packages: write`), and creates release tags and GitHub releases with it (`contents: write`). No long-lived secrets are stored, and OIDC is not needed: GHCR accepts `GITHUB_TOKEN` directly.
 
 ## Exceptions
 
