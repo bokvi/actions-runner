@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   build:
+    # :latest and the releases come from main only; a manual run elsewhere would have no tags.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     outputs:
