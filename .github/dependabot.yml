@@ -17,6 +17,9 @@ updates:
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]
+      # A new AWS CLI major may change the /usr/local/aws-cli/v2 layout the Dockerfile links to.
+      - dependency-name: amazon/aws-cli
+        update-types: [version-update:semver-major]
   - package-ecosystem: docker
     directories:
       - /prewarm

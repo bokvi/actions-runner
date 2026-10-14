@@ -91,7 +91,7 @@ make push         # build both platforms and push (needs `docker login ghcr.io`)
 
 Override `IMAGE`, `TAG` or `PLATFORMS` as needed, for example `make build TAG=dev`.
 
-The cached Node.js comes from the official `node` image, pinned by tag and digest in the `Dockerfile`. Dependabot proposes new 24.x releases weekly; a move to another major is a manual change, together with the README. The AWS CLI is pinned the same way, from the official `amazon/aws-cli` image, and Dependabot bumps it too. `gh` is installed from GitHub's apt repository at build time, so each build gets its current release.
+The cached Node.js comes from the official `node` image, pinned by tag and digest in the `Dockerfile`. Dependabot proposes new 24.x releases weekly; a move to another major is a manual change, together with the README. The AWS CLI is pinned the same way, from the official `amazon/aws-cli` image, and Dependabot bumps it too. `gh` isn't pinned: it's whatever GitHub's apt repository has when the apt layer is built, and builds that reuse the cached layer keep that version. The repository is removed from the image afterwards, so jobs' `apt-get update` doesn't depend on it.
 
 ## Publishing
 

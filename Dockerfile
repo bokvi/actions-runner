@@ -23,7 +23,9 @@ FROM ${BASE_IMAGE} AS base
 
 USER root
 
-# gh comes from GitHub's apt repository, signed with the keyring GitHub publishes there.
+# gh comes from GitHub's apt repository, signed with the keyring GitHub publishes there. The
+# source and keyring are removed afterwards, so a job's `apt-get update` never depends on
+# cli.github.com or on that keyring still matching GitHub's signing key.
 RUN install -d -m 755 /etc/apt/keyrings \
  && curl -fsSL -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
       https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -39,6 +41,7 @@ RUN install -d -m 755 /etc/apt/keyrings \
       gh \
       git \
       jq \
+ && rm -f /etc/apt/sources.list.d/github-cli.list /etc/apt/keyrings/githubcli-archive-keyring.gpg \
  && rm -rf /var/lib/apt/lists/*
 
 # The AWS CLI keeps the official image's layout: the versioned install under /usr/local/aws-cli
