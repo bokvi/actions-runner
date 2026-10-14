@@ -5,6 +5,13 @@
     ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
     ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
     [
+      "@semantic-release/exec",
+      {
+        "verifyConditionsCmd": "docker buildx imagetools inspect \"$IMAGE@$DIGEST\" > /dev/null",
+        "publishCmd": "docker buildx imagetools create -t \"$IMAGE:${nextRelease.version}\" -t \"$IMAGE:sha-$(git rev-parse --short=7 HEAD)\" \"$IMAGE@$DIGEST\""
+      }
+    ],
+    [
       "@semantic-release/github",
       {
         "successComment": false,

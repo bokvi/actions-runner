@@ -7,12 +7,13 @@ updates:
     commit-message:
       prefix: ci
   # The Node.js image the tool cache is copied from. Stay on Node 24, the major in the README.
+  # The fix prefix releases a patch version with the update.
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
     commit-message:
-      prefix: chore
+      prefix: fix
     ignore:
       - dependency-name: node
         update-types: [version-update:semver-major]

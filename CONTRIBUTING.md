@@ -30,7 +30,7 @@ No scopes are defined. Use one only when it makes a change clearer, for example 
 
 ## Releases
 
-Every push to `main` publishes `ghcr.io/bokvi/actions-runner:latest`. Versions are released automatically: after the build, [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)) derives the next version from the commits since the last release, creates the `v<major>.<minor>.<patch>` tag and GitHub release, and the image is tagged `:<major>.<minor>.<patch>`. A breaking change releases a major version, `feat` a minor and `fix` or `perf` a patch; other types release nothing. The squash commit uses the PR title, so choose its type with the release in mind. Don't push `v*` tags by hand.
+Every push to `main` publishes `ghcr.io/bokvi/actions-runner:latest`. Versions are released automatically: after the build, [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)) derives the next version from the commits since the last release, creates the `v<major>.<minor>.<patch>` tag, tags the image `:<major>.<minor>.<patch>` and creates the GitHub release. A breaking change releases a major version, `feat` a minor and `fix`, `perf` or `revert` a patch; other types release nothing. The squash commit uses the PR title, so choose its type with the release in mind. Don't push `v*` tags by hand.
 
 ## Credentials
 

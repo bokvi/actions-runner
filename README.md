@@ -98,17 +98,17 @@ The cached Node.js comes from the official `node` image, pinned by tag and diges
 [`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds the multi-arch image with Docker Buildx and pushes it to GHCR using the built-in `GITHUB_TOKEN`. It runs on a push to `main` and on a manual run (`workflow_dispatch`) on `main`, and:
 
 1. pushes the image as `:latest`;
-2. runs [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)), which derives the next version from the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) since the last release and creates the `v<version>` tag and GitHub release;
-3. if a version was released, tags the same image as `:<version>` and `:sha-<short-sha>`.
+2. runs [semantic-release](https://semantic-release.gitbook.io/) ([`.releaserc.json`](.releaserc.json)), which derives the next version from the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) since the last release and creates the `v<version>` tag;
+3. if the commits release a version, tags the same image as `:<version>` and `:sha-<short-sha>`, then creates the GitHub release.
 
 | Commits since the last release | Release |
 | --- | --- |
 | A breaking change (`feat!:`, `fix!:` or a `BREAKING CHANGE:` footer) | major |
 | `feat` | minor |
-| `fix`, `perf` | patch |
+| `fix`, `perf`, `revert` | patch |
 | Only other types (`ci`, `chore`, `docs`, …) | none, only `:latest` is updated |
 
-Pull requests are squash-merged, so the PR title decides the release. Don't push `v*` tags by hand.
+Pull requests are squash-merged, so the PR title decides the release. Dependabot's updates of the `Dockerfile` images use `fix`, so they release a patch version. Don't push `v*` tags by hand.
 
 ### Package visibility
 
